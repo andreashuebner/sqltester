@@ -48,6 +48,20 @@ no duplicates on account_name in tbl_customers;
 
 account_name minimum length 5 in tbl_customers;
 
+Test cases always end with ";".
+
+Assuming that you keep the default table prefix, this will generate 
+a test query to create the following tables
+(all tables will end with a nine digit random number, 
+so the numbers here are only examples):
+
+**tbl_test_no_duplicates_account_id_111111111**
+**tbl_test_no_duplicates_account_name_222222222**
+**tbl_test_minimum_length_account_name_333333333**
+**tbl_test_summary_444444444**
+
+
+
 
 
 
