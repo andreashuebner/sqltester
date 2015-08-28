@@ -9,7 +9,9 @@ the test queries for you.
 The generated queries have the following basic structure:
 
 Test case 1 -> table_prefix_table_1
+
 Test case 2 -> table_prefix_table_2
+
 Test case 3 -> table_prefix_table_3
 
 Every test table will always have the following field:
