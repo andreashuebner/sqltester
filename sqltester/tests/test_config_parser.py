@@ -21,5 +21,14 @@ class TestConfigParser(unittest.TestCase):
         for pair in configGenerator:
           pass
         
+    def test_misformatted_file_missing_separator(self):
+      excepted_error_message = ('Error in file ' +
+        'sqltester/tests/config_test_misformatted_missing_separator.cfg in line 3')
+      with self.assertRaisesRegexp(ConfigError, excepted_error_message) as ex:
+        configGenerator = _return_configs('sqltester/tests/config_test_misformatted_missing_separator.cfg')
+        for pair in configGenerator:
+          pass
+        
+        
         
         
