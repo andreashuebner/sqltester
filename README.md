@@ -72,6 +72,14 @@ select * from tbl_test_summary_444444444;
 
 The final summary table will only contain failed test cases.
 
+You can generate your test queries by calling sqltester.py like this:
+
+python sqltester.py --input=test_cases.csv --output=test_queries.sql
+
+The command line parameters --input and --output are the only required command line parameters.
+
+
+
 
 
 
