@@ -56,9 +56,21 @@ a test query to create the following tables
 so the numbers here are only examples):
 
 **tbl_test_no_duplicates_account_id_111111111**
+
 **tbl_test_no_duplicates_account_name_222222222**
+
 **tbl_test_minimum_length_account_name_333333333**
+
 **tbl_test_summary_444444444**
+
+After running the generated test query, you only need to check the summary
+table e.g. like this:
+
+```
+select * from tbl_test_summary_444444444;
+```
+
+The final summary table will only contain failed test cases.
 
 
 
