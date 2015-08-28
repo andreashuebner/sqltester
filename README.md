@@ -43,7 +43,9 @@ You could now create a file with your test cases (e.g. test_cases.csv) with the
 following content:
 
 no duplicates on account_id in tbl_customers;
+
 no duplicates on account_name in tbl_customers;
+
 account_name minimum length 5 in tbl_customers;
 
 
