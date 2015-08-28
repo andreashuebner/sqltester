@@ -80,7 +80,7 @@ The command line parameters --input and --output are the only required command l
 
 This was only a quickstart description.
 
-You can find a complete documentation in html format in the folder docs (sqltester.html).
+You can find a complete documentation in the wiki.
 
 
 
