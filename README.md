@@ -6,3 +6,19 @@ Instead of writing the test queries manually, you write the test cases in a doma
 the python script will generate the test queries for you.
 ```
 
+```
+The generated queries have the following basic structure:
+
+Test case 1 -> table_prefix_table_1
+Test case 2 -> table_prefix_table_2
+Test case 3 -> table_prefix_table_3
+
+Every test table will always have the following field:
+**error_description**: Empty string if no issue or description of issue
+
+The final table with all test cases ist just a union of the test results in the tables:
+
+**error_description**: One row with error description for each test case if test cases failed.
+```
+
+
