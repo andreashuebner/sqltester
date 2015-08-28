@@ -78,6 +78,10 @@ python sqltester.py --input=test_cases.csv --output=test_queries.sql
 
 The command line parameters --input and --output are the only required command line parameters.
 
+This was only a quickstart description.
+
+You can find a complete documentation in html format in the folder docs (sqltester.html).
+
 
 
 
