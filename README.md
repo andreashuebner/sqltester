@@ -26,6 +26,12 @@ The final table with all test cases ist just a union of the test results in the 
 You can just install sqltester with pip install sqltester, but you can also just clone the Git Repo.
 For production, only the following files are required:
 
+* sqltester.py
+* _config_parser.py
+* config.cfg
+* 
+
+
 
 
 
