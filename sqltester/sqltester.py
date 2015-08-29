@@ -1,11 +1,80 @@
 import sys
+import re
 
 # Some constants
 REQUIRED_COMMAND_LINE_ARGUMENTS = ['input', 'output']
-COMMAND_LINE_ARGUMENTS_PREFIX = '--'
+
+class MissingCommandLineArgumentsError(Exception):
+  ''' Exception type for missing command line arguments '''
+  pass
+
+def check_required_command_line_arguments_exist(list_command_line_arguments,
+  list_required_parameters):
+  ''' Function to check that we received all required command line parameters.
+  
+  Args:
+    list_command_line_arguments: A list of tuples, first element of tuple command line argument
+    list_required_parameters: A list of required command line arguments
+  
+  Returns:
+    Empty list if no parameters are missing, or the list of required command line parameters
+ '''
+  
+  list_required = list(list_required_parameters) # make copy to avoid side effects
+  list_arguments_not_found = [] # here we will save the arguments not found
+  list_existing_arguments = []
+  
+  for pair in list_command_line_arguments:
+    command_line_argument, command_line_arguments = pair
+    list_existing_arguments.append(command_line_argument)
+  
+  for required_argument in list_required:
+    if required_argument not in list_existing_arguments:
+      list_arguments_not_found.append(required_argument)
+      
+  return list_arguments_not_found
+
+def command_line_parser(list_command_line_arguments):
+  ''' Parses command line options provided in format --[commandLineParameter]=[commandLineValue]
+  e.g. --input=test_cases.csv --ouput=output.csv
+  
+  Args:
+    list_command_line_arguments: A list of all command line parameters (except sys.argv[0])
+    
+  Returns:
+    A list of tuples, the first element the command line parameter, the second element the command
+      line value (e.g. [('input', 'test_cases.csv'), ('output', 'output.csv')]
+  '''
+  
+  list_command_line_tuples = []
+  for argument in list_command_line_arguments:
+    list_elements = argument.split('=') # should result in two elements, format is --argument=value
+    if len(list_elements) != 2:
+      raise RuntimeError('Invalid command line parameter {}'.format(argument))
+    
+    command_line_argument = list_elements[0]
+    command_line_argument = command_line_argument.replace('--','')
+    command_line_argument = command_line_argument.strip()
+    command_line_value = list_elements[1]
+    command_line_value = command_line_value.strip()
+    command_line_pair = (command_line_argument, command_line_value)
+    list_command_line_tuples.append(command_line_pair)
+  
+  return list_command_line_tuples
+  
+  
+  
+    
 
 def main():
-  pass
+  if len(sys.argv) < 3:
+    raise MissingCommandLineArgumentsError('Usage: python sqltester.py --input=[pathInputFile] ' +
+      ' --output=[pathOutputFile]')
+  
+  list_command_line_parameters = command_line_parser(sys.argv[1:])
+  check_required_command_line_arguments_exist(list_command_line_parameters, 
+    REQUIRED_COMMAND_LINE_ARGUMENTS)
+  
   
 
 if __name__ == '__main__':
