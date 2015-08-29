@@ -8,6 +8,22 @@ class MissingCommandLineArgumentsError(Exception):
   ''' Exception type for missing command line arguments '''
   pass
 
+def check_file_exists_readable(path_to_file):
+  ''' Checks whether we can read from the file.
+  
+  Args:
+    path_to_file: Path to file to read
+  
+  Returns:
+    True if no OSException occured, otherwise False
+ '''
+  
+  try:
+    with open(path_to_file, 'r') as f:
+      return True
+  except IOError:
+    return False
+    
 def check_required_command_line_arguments_exist(list_command_line_arguments,
   list_required_parameters):
   ''' Function to check that we received all required command line parameters.
@@ -72,8 +88,23 @@ def main():
       ' --output=[pathOutputFile]')
   
   list_command_line_parameters = command_line_parser(sys.argv[1:])
-  check_required_command_line_arguments_exist(list_command_line_parameters, 
+  missing_command_line_arguments = check_required_command_line_arguments_exist(list_command_line_parameters, 
     REQUIRED_COMMAND_LINE_ARGUMENTS)
+  
+  if missing_command_line_arguments:
+    raise MissingCommandLineArgumentsError('Usage: python sqltester.py --input=[pathInputFile] ' +
+      ' --output=[pathOutputFile]')
+  
+  path_input_file = ''
+  path_output_file = ''
+  for pair in list_command_line_parameters:
+    command_line_argument, command_line_value = pair
+    if command_line_argument == 'input':
+      path_input_file = command_line_value
+    if command_line_argument == 'output':
+      path_output_file = command_line_value
+  
+  
   
   
 

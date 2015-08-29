@@ -3,3 +3,4 @@ includ
 include
 lib
 *.pyc
+requirements.txt
