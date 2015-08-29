@@ -28,6 +28,7 @@ For production, only the following files are required:
 
 * sqltester.py
 * _config_parser.py
+* _query_generator.py
 * config.cfg
 
 ### Simple Example
