@@ -1,4 +1,4 @@
-# sqltester
+# sqltester - Work in Progress!!!
 
 ## Overview/General idea
 The basic idea of sql tester is to automate the writing of SQL queries to test tables 
