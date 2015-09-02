@@ -1,5 +1,6 @@
 import sys
 import re
+from _query_generator import Evaluator
 
 # Some constants
 REQUIRED_COMMAND_LINE_ARGUMENTS = ['input', 'output']
@@ -104,7 +105,12 @@ def main():
     if command_line_argument == 'output':
       path_output_file = command_line_value
   
+  #read in content of input file
+  with open(path_input_file, 'r') as f:
+    content = f.read()
   
+  evaluator = Evaluator(content)
+  evaluator._parse()
   
   
 
