@@ -68,7 +68,7 @@ After running the generated test query, you only need to check the summary
 table e.g. like this:
 
 ```
-select * from tbl_test_summary_444444444;
+select * from tbl_test_summary_444444444 where error_description != "";
 ```
 
 The final summary table will only contain failed test cases.
