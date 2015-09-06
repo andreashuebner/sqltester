@@ -108,9 +108,8 @@ def main():
   #read in content of input file
   with open(path_input_file, 'r') as f:
     content = f.read()
-  
-  evaluator = Evaluator(content)
-  evaluator._parse()
+    evaluator = Evaluator(content)
+    evaluator.parse()
   
   
 

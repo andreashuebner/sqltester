@@ -1,4 +1,5 @@
 import unittest
+import re
 
 from _query_generator import Evaluator
 
@@ -15,4 +16,58 @@ class TestReplaceTemplateVariable(unittest.TestCase):
     template = evaluator._replace_template_variable(template, 'table_name', 'tbl_andreas')
     self.assertEqual(template, 'Create or replace tbl_andreas as tbl_andreas ',
       'Should substitute several variables')
+    
+class TestRandomNumberFunction(unittest.TestCase):
+  def test_random_number_function(self):
+    evaluator = Evaluator('', 'sqltester/tests/config_dummy.cfg')
+    random_number_1 = evaluator._create_random_number(1, 999999999)
+    random_number_2 = evaluator._create_random_number(1, 999999999)
+    self.assertRegexpMatches(str(random_number_1), r'[^a-z]', 'Random number created should not ' +
+      ' contain letters')
+    self.assertGreaterEqual(random_number_1, 1, 'Should be greater equal minimum value')
+    self.assertLessEqual(random_number_1, 999999999, 'Should be less equal maximum value')
+    self.assertRegexpMatches(str(random_number_2), r'[^a-z]', 'Random number created should not ' +
+      ' contain letters')
+    self.assertGreaterEqual(random_number_2, 1, 'Should be greater equal minimum value')
+    self.assertLessEqual(random_number_2, 999999999, 'Should be less equal maximum value')
+    self.assertNotEqual(random_number_1, random_number_2, 'Both random numbers should be ' +
+      ' different')
+    
+class TestNoDuplicateQueries(unittest.TestCase):
+  def clean_query(self, query_to_clean):
+    ''' Helper function to clean query template from line endings and consuctive whitespaces '''
+    query_to_clean = query_to_clean.replace('\n',' ')
+    query_to_clean = re.sub(r'\s+',' ', query_to_clean)
+    query_to_clean = query_to_clean.strip()
+    return query_to_clean
+  
+  def setUp(self):
+    self.TEMPlATE_NO_DUPLICATES_FOR_TEST = """
+    select
+    count(*) as number_duplicates,
+    case when count(*) > 0 then "Duplicates found in table {{table_name}}" else "" end as error_description
+    from
+    (
+    SELECT {{field_names}}, COUNT(*)
+    FROM {{table_name}}
+    GROUP BY {{field_names}}
+    HAVING COUNT(*) > 1
+    )x
+    ;
+    """
+  def test_unique_function_one_field_name(self):
+    statement_to_test = 'No duplicates on account_id in tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    list_created_queries = evaluator.parse()
+    #The only thing we do not test here is the create table statement because of random number
+    expected_template = self.TEMPlATE_NO_DUPLICATES_FOR_TEST
+    expected_template = self.clean_query(expected_template)
+    expected_template = expected_template.replace('{{field_names}}', 'account_id')
+    expected_template = expected_template.replace('{{table_name}}', 'tbl_customers')
+    first_created_query = list_created_queries[0]
+    main_query = re.findall(r'select.+;', first_created_query, re.S)
+    second_part = main_query[0]
+    self.assertEqual(second_part, expected_template, 'Should generate no duplicate query correctly')
+    
+    
 
