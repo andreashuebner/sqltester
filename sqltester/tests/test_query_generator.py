@@ -3,6 +3,20 @@ import re
 
 from _query_generator import Evaluator
 
+class TestHelperFunctions(unittest.TestCase):
+  def test_is_number_function(self):
+    evaluator = Evaluator('', 'sqltester/tests/config_dummy.cfg')
+    is_number = evaluator._is_number('Andreas')
+    self.assertEqual(is_number, False, 'Should return False for string')
+    is_number = evaluator._is_number('100Andreas')
+    self.assertEqual(is_number, False, 'Should return False for number mixed with string')
+    is_number = evaluator._is_number('Andreas100')
+    self.assertEqual(is_number, False, 'Should return False for string mixed with number')
+    is_number = evaluator._is_number(100)
+    self.assertEqual(is_number, True, 'Should return true for integer')
+    is_number = evaluator._is_number(100.99)
+    self.assertEqual(is_number, True, 'Should return for double')
+
 class TestReplaceTemplateVariable(unittest.TestCase):
   def test_template_with_one_variable(self):
     evaluator = Evaluator('', 'sqltester/tests/config_dummy.cfg')

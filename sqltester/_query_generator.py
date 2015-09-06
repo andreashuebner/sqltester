@@ -20,6 +20,20 @@ HAVING COUNT(*) > 1
 )x
 ;
 """
+  
+TEMPlATE_MINIMUM_DATASETS = """
+{{create_table_statement}} {{table_name_to_create}} as
+select
+case when number_datasets < {{minimum_datasets}} then "Expected at least {{minimum_datasets}} datasets in table
+{{table_name}}" else "" end as error_description
+from
+(
+SELECT COUNT(*) as number_datasets
+FROM {{table_name}}
+{{conditions}}
+)x
+;
+"""  
 ### End of templates
 
 
@@ -28,12 +42,14 @@ def _generate_tokens(queries_to_parse):
   NO_DUPLICATES = r'(?P<NO_DUPLICATES>(?i)no duplicates)'
   ON = r'(?P<ON>(?i)on)'
   IN = r'(?P<IN>(?i)in)'
+  AT_LEAST = r'(?P<AT_LEAST>(?i)at least)'
+  WHERE_CONDITION = r'(?P<WHERE_CONDITION>(?i)where((?:.|\n|\t|\r|\s)+?);)'
   IDENTIFIER = r'(?P<IDENTIFIER>(?i)[a-z0-9_-]+)'
   WHITESPACE = r'(?P<WHITESPACE>(?i)(?:\n|\r|\s))'
   COMMA = r'(?P<COMMA>(?i),)'
   END_STATEMENT = r'(?P<END_STATEMENT>(?i);)'
-  patterns = re.compile('|'.join([NO_DUPLICATES, ON, IN, 
-    END_STATEMENT, WHITESPACE, IDENTIFIER, COMMA]))
+  patterns = re.compile('|'.join([NO_DUPLICATES, ON, IN, AT_LEAST,
+    WHERE_CONDITION, END_STATEMENT, WHITESPACE, IDENTIFIER, COMMA]))
   Token = collections.namedtuple('Token', ['type', 'value'])
   scanner = patterns.scanner(queries_to_parse)
   for m in iter(scanner.match, None):
@@ -62,7 +78,24 @@ class Evaluator(object):
     # variables used and updated for each parse
     self._template_to_use = ''
     
+  def _is_number(self, number_to_check):
+    ''' Function to check whether input represent int or double
     
+    Args:
+      number_to_check: The input to check
+      
+    Returns:
+      True if input can be cast to int or double, False if not
+      
+   '''
+   
+    is_valid_number = True
+    try:
+      number_to_check = float(number_to_check)
+    except:
+      is_valid_number = False
+   
+    return is_valid_number
   
   def _create_random_number(self, min, max):
     ''' Function to generate a random number
@@ -141,6 +174,7 @@ class Evaluator(object):
       raise SyntaxError("Expecting command like 'no duplicates' as first token")
     
     # Which template to use
+    ### START PARSING NO DUPLICATE STATEMENT
     if exprtype == "NO_DUPLICATES":
       self._template_to_use = TEMPlATE_NO_DUPLICATES
       self._template_to_use = self._replace_template_variable(self._template_to_use, 
@@ -173,11 +207,64 @@ class Evaluator(object):
             return self._template_to_use
           else:
             raise SyntaxError("Expect token ';' at end of statement")
-          
-        
-  
+    
+    
       else:
         raise SyntaxError("Expecting token 'in' after field names")
+    ### END PARSING NO DUPLICATES STATEMENT ###
+    
+    ### START PARSING AT LEAST STATEMENT ####
+    elif exprtype == "AT_LEAST":
+      self._template_to_use = TEMPlATE_MINIMUM_DATASETS
+      self._template_to_use = self._replace_template_variable(self._template_to_use, 
+                                 'create_table_statement', self._create_table_statement)
+      
+      self._template_to_use = self._replace_template_variable(self._template_to_use, 
+                                 'table_name_to_create', self._table_name_to_create)
+    
+      # Next token must be identifier and this number must be either int or double
+      if self._accept('IDENTIFIER'):
+        is_number = self._is_number(self.tok.value)
+        if is_number == False:
+          raise SyntaxError("After 'at least' token expecting number")
+        
+        self._template_to_use = self._replace_template_variable(self._template_to_use,
+          'minimum_datasets', str(self.tok.value))
+        
+        # Next token expected is IN
+        if not self._accept('IN'):
+          raise SyntaxError("After 'at least {number_datasets}' token, expecting 'in' token")
+        
+        # Next token expected identifier (table name)
+        if not self._accept('IDENTIFIER'):
+          raise SyntaxError("After 'in' token, expecting identifier as table name")
+    
+        #current token value is table name
+        self._template_to_use = self._replace_template_variable(self._template_to_use,
+          'table_name', self.tok.value)
+    
+        # Now either token conditions expected or end of command
+        if self._accept('END_STATEMENT'):
+          # remove placeholder conditions
+          self._template_to_use = self._replace_template_variable(self._template_to_use,
+          'conditions', '')
+          return self._template_to_use
+        
+        elif self._accept('WHERE_CONDITION'):
+          condition = self.tok.value.replace(';','') # we match ; as well, remove
+          self._template_to_use = self._replace_template_variable(self._template_to_use,
+            'conditions', condition)
+          return self._template_to_use
+        else:
+          raise SyntaxError("Expect token ';' at end of statement")
+       
+    ### END PARSING AT LEAST STATEMENT ####
+    else:
+      raise SnytaxError("Unknown command")
+    
+        
+  
+      
   
       
       
@@ -205,7 +292,7 @@ class Evaluator(object):
         and token_type
     
     '''
-    if self._accept('NO_DUPLICATES'):
+    if self._accept('NO_DUPLICATES') or self._accept('AT_LEAST'):
       command_type = self.tok.type;
       command_val = self.tok.value
       return command_val, command_type
