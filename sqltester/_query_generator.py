@@ -33,22 +33,37 @@ FROM {{table_name}}
 {{conditions}}
 )x
 ;
-"""  
+"""
+
+TEMPlATE_MINIMUM_SUM = """
+{{create_table_statement}} {{table_name_to_create}} as
+select
+case when sum_of_field < {{minimum_sum}} then "Expected sum of {{field_name}} in table
+{{table_name}} to be at least {{minimum_sum}}" else "" end as error_description
+from
+(
+SELECT SUM({{field_name}}) as sum_of_field
+FROM {{table_name}}
+{{conditions}}
+)x
+;
+"""
 ### End of templates
 
 
 def _generate_tokens(queries_to_parse):
   
   NO_DUPLICATES = r'(?P<NO_DUPLICATES>(?i)no duplicates)'
-  ON = r'(?P<ON>(?i)on)'
-  IN = r'(?P<IN>(?i)in)'
-  AT_LEAST = r'(?P<AT_LEAST>(?i)at least)'
+  ON = r'(?P<ON>(?i)(?:\n|\r|\t|\s)on(?:\n|\r|\t|\s))'
+  IN = r'(?P<IN>(?i)(?:\n|\r|\t|\s)in(?:\n|\r|\t|\s))'
+  AT_LEAST = r'(?P<AT_LEAST>(?i)at least(?:\n|\r|\t|\s))'
+  SUM_OF = r'(?P<SUM_OF>(?i)sum of(?:\n|\r|\t|\s))'
   WHERE_CONDITION = r'(?P<WHERE_CONDITION>(?i)where((?:.|\n|\t|\r|\s)+?);)'
   IDENTIFIER = r'(?P<IDENTIFIER>(?i)[a-z0-9_-]+)'
   WHITESPACE = r'(?P<WHITESPACE>(?i)(?:\n|\r|\s))'
   COMMA = r'(?P<COMMA>(?i),)'
   END_STATEMENT = r'(?P<END_STATEMENT>(?i);)'
-  patterns = re.compile('|'.join([NO_DUPLICATES, ON, IN, AT_LEAST,
+  patterns = re.compile('|'.join([NO_DUPLICATES, ON, IN, AT_LEAST, SUM_OF,
     WHERE_CONDITION, END_STATEMENT, WHITESPACE, IDENTIFIER, COMMA]))
   Token = collections.namedtuple('Token', ['type', 'value'])
   scanner = patterns.scanner(queries_to_parse)
@@ -259,6 +274,66 @@ class Evaluator(object):
           raise SyntaxError("Expect token ';' at end of statement")
        
     ### END PARSING AT LEAST STATEMENT ####
+    
+    ### START PARSING MINIMUM SUM STATEMENT ###
+    elif exprtype == "SUM_OF":
+      self._template_to_use = TEMPlATE_MINIMUM_SUM
+      self._template_to_use = self._replace_template_variable(self._template_to_use, 
+                                 'create_table_statement', self._create_table_statement)
+      
+      self._template_to_use = self._replace_template_variable(self._template_to_use, 
+                                 'table_name_to_create', self._table_name_to_create)
+      
+      # next token must be identifier (the field name)
+      if self._accept('IDENTIFIER'):
+        self._template_to_use = self._replace_template_variable(self._template_to_use, 
+                                 'field_name', self.tok.value)
+      else:
+        raise SyntaxError("Expecting identifier as field name after token 'sum of'")
+      
+      # Next token determines what needs to be tested, currently supported at least
+      if self._accept('AT_LEAST'):
+        pass
+      else:
+        raise SyntaxError("Expecting token 'at least' after field name in test 'sum of'")
+      
+      # Next token identifier and needs to be a number
+      if self._accept('IDENTIFIER'):
+        is_number = self._is_number(self.tok.value)
+        if is_number == False:
+          raise SyntaxError("Expecting number after token 'at least'")
+        else:
+          self._template_to_use = self._replace_template_variable(self._template_to_use,
+            'minimum_sum', self.tok.value)
+      else:
+        raise SyntaxError("Expecting number after token 'at least'")
+      
+      # Next token must be in
+      if self._accept('IN'):
+        pass
+      else:
+        raise SyntaxError("Expecting token 'in' after number in sum of command")
+      
+      #Last required token is identifier (table name) and optionally after where condition(s)
+      if self._accept('IDENTIFIER'):
+        self._template_to_use = self._replace_template_variable(self._template_to_use,
+          'table_name', self.tok.value)
+      else:
+        raise SyntaxError("Expecting identifier after token 'in'")
+      
+      # check optionally for where conditions
+      if self._accept('END_STATEMENT'):
+          # remove placeholder conditions
+          self._template_to_use = self._replace_template_variable(self._template_to_use,
+          'conditions', '')
+          return self._template_to_use
+      elif self._accept('WHERE_CONDITION'):
+          condition = self.tok.value.replace(';','') # we match ; as well, remove
+          self._template_to_use = self._replace_template_variable(self._template_to_use,
+            'conditions', condition)
+          return self._template_to_use
+      else:
+          raise SyntaxError("Expect token ';' at end of statement")
     else:
       raise SnytaxError("Unknown command")
     
@@ -292,7 +367,7 @@ class Evaluator(object):
         and token_type
     
     '''
-    if self._accept('NO_DUPLICATES') or self._accept('AT_LEAST'):
+    if self._accept('NO_DUPLICATES') or self._accept('AT_LEAST') or self._accept('SUM_OF'):
       command_type = self.tok.type;
       command_val = self.tok.value
       return command_val, command_type

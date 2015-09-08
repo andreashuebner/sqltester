@@ -3,6 +3,12 @@ import re
 
 from _query_generator import Evaluator
 
+def clean_query(query_to_clean):
+    ''' Helper function to clean query template from line endings and consuctive whitespaces '''
+    query_to_clean = query_to_clean.replace('\n',' ')
+    query_to_clean = re.sub(r'\s+',' ', query_to_clean)
+    query_to_clean = query_to_clean.strip()
+    return query_to_clean
 class TestHelperFunctions(unittest.TestCase):
   def test_is_number_function(self):
     evaluator = Evaluator('', 'sqltester/tests/config_dummy.cfg')
@@ -48,12 +54,6 @@ class TestRandomNumberFunction(unittest.TestCase):
       ' different')
     
 class TestNoDuplicateQueries(unittest.TestCase):
-  def clean_query(self, query_to_clean):
-    ''' Helper function to clean query template from line endings and consuctive whitespaces '''
-    query_to_clean = query_to_clean.replace('\n',' ')
-    query_to_clean = re.sub(r'\s+',' ', query_to_clean)
-    query_to_clean = query_to_clean.strip()
-    return query_to_clean
   
   def setUp(self):
     self.TEMPlATE_NO_DUPLICATES_FOR_TEST = """
@@ -75,13 +75,91 @@ class TestNoDuplicateQueries(unittest.TestCase):
     list_created_queries = evaluator.parse()
     #The only thing we do not test here is the create table statement because of random number
     expected_template = self.TEMPlATE_NO_DUPLICATES_FOR_TEST
-    expected_template = self.clean_query(expected_template)
     expected_template = expected_template.replace('{{field_names}}', 'account_id')
     expected_template = expected_template.replace('{{table_name}}', 'tbl_customers')
+    expected_template = clean_query(expected_template)
     first_created_query = list_created_queries[0]
     main_query = re.findall(r'select.+;', first_created_query, re.S)
     second_part = main_query[0]
     self.assertEqual(second_part, expected_template, 'Should generate no duplicate query correctly')
     
+class TestMinimumDatasetsQueries(unittest.TestCase):
+  
+  def setUp(self):
+    self.TEMPlATE_MINIMUM_DATASETS_FOR_TEST = """
+    select
+    case when number_datasets < {{minimum_datasets}} then "Expected at least {{minimum_datasets}} datasets in table
+    {{table_name}}" else "" end as error_description
+    from
+    (
+      SELECT COUNT(*) as number_datasets
+      FROM {{table_name}}
+      {{conditions}}
+    )x
+;
+    """
+  def test_minimum_datasets_without_condition(self):
+    statement_to_test = 'at least 100 in tbl_customers; '
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    list_created_queries = evaluator.parse()
+    #The only thing we do not test here is the create table statement because of random number
+    expected_template = self.TEMPlATE_MINIMUM_DATASETS_FOR_TEST
+    expected_template = expected_template.replace('{{conditions}}', '')
+    expected_template = expected_template.replace('{{table_name}}', 'tbl_customers')
+    expected_template = expected_template.replace('{{minimum_datasets}}', '100')
+    expected_template = clean_query(expected_template)
+    first_created_query = list_created_queries[0]
+    main_query = re.findall(r'select.+;', first_created_query, re.S)
+    second_part = main_query[0]
+    self.assertEqual(second_part, expected_template, 'Should generate minimum datasets query correctly')
     
+  def test_minimum_datasets_with_condition(self):
+    statement_to_test = 'at least 100 in tbl_customers where invoice_amount >= 100 and invoice_age < 30; '
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    list_created_queries = evaluator.parse()
+    #The only thing we do not test here is the create table statement because of random number
+    expected_template = self.TEMPlATE_MINIMUM_DATASETS_FOR_TEST
+    expected_template = expected_template.replace('{{conditions}}', 'where invoice_amount >= 100 and invoice_age < 30')
+    expected_template = expected_template.replace('{{table_name}}', 'tbl_customers')
+    expected_template = expected_template.replace('{{minimum_datasets}}', '100')
+    expected_template = clean_query(expected_template)
+    first_created_query = list_created_queries[0]
+    main_query = re.findall(r'select.+;', first_created_query, re.S)
+    second_part = main_query[0]
+    print("second part")
+    print(second_part)
+    self.assertEqual(second_part, expected_template, 'Should generate minimum datasets query correctly')
+    
+class TestMinimumSumQueries(unittest.TestCase):
+  def setUp(self):
+    self.TEMPlATE_MINIMUM_SUM_FOR_TEST = """
+    select
+    case when sum_of_field < {{minimum_sum}} then "Expected sum of {{field_name}} in table
+    {{table_name}} to be at least {{minimum_sum}}" else "" end as error_description
+    from
+    (
+    SELECT SUM({{field_name}}) as sum_of_field
+    FROM {{table_name}}
+    {{conditions}}
+    )x
+    ;
+    """
+    
+  def test_minimum_sum_without_condition(self):
+    statement_to_test = 'sum of invoice_amount at least 1000 in tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    list_created_queries = evaluator.parse()
+    #The only thing we do not test here is the create table statement because of random number
+    expected_template = self.TEMPlATE_MINIMUM_SUM_FOR_TEST
+    expected_template = expected_template.replace('{{conditions}}', '')
+    expected_template = expected_template.replace('{{table_name}}', 'tbl_customers')
+    expected_template = expected_template.replace('{{minimum_sum}}', '1000')
+    expected_template = expected_template.replace('{{field_name}}', 'invoice_amount')
+    expected_template = clean_query(expected_template)
+    first_created_query = list_created_queries[0]
+    main_query = re.findall(r'select.+;', first_created_query, re.S)
+    second_part = main_query[0]
+    print("second part")
+    print(second_part)
+    self.assertEqual(second_part, expected_template, 'Should generate minimum sum query correctly')  
 
