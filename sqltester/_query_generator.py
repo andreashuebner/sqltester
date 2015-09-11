@@ -127,6 +127,28 @@ class Evaluator(object):
     random_number = random.randint(min, max) 
     return random_number
   
+  def _replace_create_table_statement(self, template, create_table_statement, table_name):
+    ''' Helper function to replace create table statement and table name to create in template
+  
+    Uses member variables self._create_table_statement and self._table_name_to_create
+  
+    Args:
+      template: The template string
+      create_table_statement: The value to substitute placeholder create table statement with
+      table_name: The value to substitute placeholder table_name to create with
+  
+    Returns:
+      The template string with placeholders substituted
+    '''
+      
+    template_substituted = self._replace_template_variable(template, 'create_table_statement', 
+      self._create_table_statement)
+    template_substituted = self._replace_template_variable(template_substituted,
+      'table_name_to_create', self._table_name_to_create)
+    
+    return template_substituted
+    
+      
   def _replace_template_variable(self, template, variable_name, variable_value):
     ''' Replace a template variable in current template.
   
@@ -192,11 +214,8 @@ class Evaluator(object):
     ### START PARSING NO DUPLICATE STATEMENT
     if exprtype == "NO_DUPLICATES":
       self._template_to_use = TEMPlATE_NO_DUPLICATES
-      self._template_to_use = self._replace_template_variable(self._template_to_use, 
-                                 'create_table_statement', self._create_table_statement)
-      
-      self._template_to_use = self._replace_template_variable(self._template_to_use, 
-                                 'table_name_to_create', self._table_name_to_create)
+      self._template_to_use = self._replace_create_table_statement(self._template_to_use, 
+        self._create_table_statement, self._table_name_to_create)
   
       # next token must be on, otherwise syntax error
       if self._accept('ON'):
@@ -231,11 +250,8 @@ class Evaluator(object):
     ### START PARSING AT LEAST STATEMENT ####
     elif exprtype == "AT_LEAST":
       self._template_to_use = TEMPlATE_MINIMUM_DATASETS
-      self._template_to_use = self._replace_template_variable(self._template_to_use, 
-                                 'create_table_statement', self._create_table_statement)
-      
-      self._template_to_use = self._replace_template_variable(self._template_to_use, 
-                                 'table_name_to_create', self._table_name_to_create)
+      self._template_to_use = self._replace_create_table_statement(self._template_to_use, 
+        self._create_table_statement, self._table_name_to_create)
     
       # Next token must be identifier and this number must be either int or double
       if self._accept('IDENTIFIER'):
@@ -278,11 +294,8 @@ class Evaluator(object):
     ### START PARSING MINIMUM SUM STATEMENT ###
     elif exprtype == "SUM_OF":
       self._template_to_use = TEMPlATE_MINIMUM_SUM
-      self._template_to_use = self._replace_template_variable(self._template_to_use, 
-                                 'create_table_statement', self._create_table_statement)
-      
-      self._template_to_use = self._replace_template_variable(self._template_to_use, 
-                                 'table_name_to_create', self._table_name_to_create)
+      self._template_to_use = self._replace_create_table_statement(self._template_to_use, 
+        self._create_table_statement, self._table_name_to_create)
       
       # next token must be identifier (the field name)
       if self._accept('IDENTIFIER'):
