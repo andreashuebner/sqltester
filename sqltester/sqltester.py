@@ -109,7 +109,8 @@ def main():
   with open(path_input_file, 'r') as f:
     content = f.read()
     evaluator = Evaluator(content)
-    evaluator.parse()
+    list_queries = evaluator.parse()
+    
   
   
 

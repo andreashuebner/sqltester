@@ -5,6 +5,16 @@ import random
 from _config_parser import _return_configs
 from _config_parser import _return_single_config
 
+### Templates for aggregation ####
+TEMPlATE_AGGREGATION = """
+{{create_table_statement}} {{table_name_to_create}} as
+select
+error_description
+from {{table_list}}
+where error_description != ''
+;
+"""
+## END Templates for aggregation ###
 ### Start of templates ###
 TEMPlATE_NO_DUPLICATES = """
 {{create_table_statement}} {{table_name_to_create}} as
@@ -127,6 +137,32 @@ class Evaluator(object):
     random_number = random.randint(min, max) 
     return random_number
   
+  def _create_aggregation_query(self, list_tables):
+    ''' Function that returns aggregation query (union over all created test tables
+    
+    Args:
+      list_tables: The list of created test tables
+      
+    Returns:
+      The generated aggregation query as string
+   '''
+   
+    _table_name_to_create = (self._table_prefix + '_' + 'aggregation' + '_' + 
+          str(self._create_random_number(1, 999999999)))
+   
+    template_aggregation = TEMPlATE_AGGREGATION
+    # Substitute create table statement
+    _template_to_use = self._replace_create_table_statement(template_aggregation, 
+        self._create_table_statement, _table_name_to_create)
+   
+    _table_names = ','.join(list_tables)
+    template_aggregation = self._replace_template_variable(_template_to_use, 
+     'table_list', _table_names)
+   
+    return template_aggregation
+   
+    
+      
   def _replace_create_table_statement(self, template, create_table_statement, table_name):
     ''' Helper function to replace create table statement and table name to create in template
   
@@ -142,9 +178,9 @@ class Evaluator(object):
     '''
       
     template_substituted = self._replace_template_variable(template, 'create_table_statement', 
-      self._create_table_statement)
+      create_table_statement)
     template_substituted = self._replace_template_variable(template_substituted,
-      'table_name_to_create', self._table_name_to_create)
+      'table_name_to_create',table_name)
     
     return template_substituted
     
@@ -182,8 +218,12 @@ class Evaluator(object):
         self._created_query = re.sub(r'\s+',' ', self._created_query)
         self._created_query = self._created_query.strip()
         list_test_queries.append(self._created_query)
-  
-    return list_test_queries
+        self._created_tables.append(self._table_name_to_create)
+    
+    list_queries_return = list(list_test_queries) # make copy before returning
+    # now create final statement for tests
+      
+    return list_queries_return
   
   def _advance(self):
     'Advance one token ahead'

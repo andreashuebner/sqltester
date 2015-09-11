@@ -163,3 +163,40 @@ class TestMinimumSumQueries(unittest.TestCase):
     print(second_part)
     self.assertEqual(second_part, expected_template, 'Should generate minimum sum query correctly')  
 
+class TestAggregationQuery(unittest.TestCase):
+  def setUp(self):
+    self.TEMPlATE_AGGREGATION_FOR_TEST = """
+    select
+    error_description
+    from {{table_list}}
+    where error_description != ''
+    ;
+    """
+    
+  def test_aggregation_query_one_table(self):
+    expected_template = self.TEMPlATE_AGGREGATION_FOR_TEST
+    expected_template = expected_template.replace('{{table_list}}', 'tbl_test_1')
+    expected_template = clean_query(expected_template)
+    evaluator = Evaluator('', 'sqltester/tests/config_dummy.cfg')
+    list_tables = ['tbl_test_1']
+    returned_template = evaluator._create_aggregation_query(list_tables)
+    main_query = re.findall(r'select.+;', returned_template, re.S)
+    second_part = main_query[0]
+    second_part = clean_query(second_part)
+    print("second part")
+    print(second_part)
+    self.assertEqual(second_part, expected_template, 'Should generate aggregation query correctly')
+    
+  def test_aggregation_query_two_tables(self):
+    expected_template = self.TEMPlATE_AGGREGATION_FOR_TEST
+    expected_template = expected_template.replace('{{table_list}}', 'tbl_test_1,tbl_test_2')
+    expected_template = clean_query(expected_template)
+    evaluator = Evaluator('', 'sqltester/tests/config_dummy.cfg')
+    list_tables = ['tbl_test_1','tbl_test_2']
+    returned_template = evaluator._create_aggregation_query(list_tables)
+    main_query = re.findall(r'select.+;', returned_template, re.S)
+    second_part = main_query[0]
+    second_part = clean_query(second_part)
+    print("second part")
+    print(second_part)
+    self.assertEqual(second_part, expected_template, 'Should generate aggregation query correctly') 
