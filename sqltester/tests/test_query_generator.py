@@ -199,4 +199,7 @@ class TestAggregationQuery(unittest.TestCase):
     second_part = clean_query(second_part)
     print("second part")
     print(second_part)
-    self.assertEqual(second_part, expected_template, 'Should generate aggregation query correctly') 
+    self.assertEqual(second_part, expected_template, 'Should generate aggregation query correctly')
+    
+
+  

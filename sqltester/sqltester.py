@@ -110,6 +110,7 @@ def main():
     content = f.read()
     evaluator = Evaluator(content)
     list_queries = evaluator.parse()
+    evaluator.write_queries(list_queries, path_output_file)
     
   
   

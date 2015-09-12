@@ -201,7 +201,20 @@ class Evaluator(object):
   
     return return_template
   
- 
+  def write_queries(self, list_queries_to_write, output_path):
+    ''' Member function to write test queries into file
+  
+  Args:
+    list_queries_to_write: List with all test queries to write
+    output_path: Path to output file
+    '''
+    try:
+      with open(output_path, 'w') as f:
+        f.write('\n\n'.join(list_queries_to_write))
+    except:
+      raise RuntimeError('Cannot open ' + output_path + ' for writing')
+      
+    
   def parse(self):
     queries = self._queries_to_parse.split(';')
     list_test_queries = [] #list of all generated test queries
@@ -220,6 +233,9 @@ class Evaluator(object):
         list_test_queries.append(self._created_query)
         self._created_tables.append(self._table_name_to_create)
     
+    # Create and append aggregation query
+    aggregation_query = self._create_aggregation_query(self._created_tables)
+    list_test_queries.append(aggregation_query)
     list_queries_return = list(list_test_queries) # make copy before returning
     # now create final statement for tests
       
@@ -277,7 +293,6 @@ class Evaluator(object):
                                  'table_name', table_name)
         
           if self._accept('END_STATEMENT'):
-            print("Reached end of statement")
             return self._template_to_use
           else:
             raise SyntaxError("Expect token ';' at end of statement")
