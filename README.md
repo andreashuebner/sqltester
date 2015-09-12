@@ -1,4 +1,4 @@
-# sqltester - Work in Progress!!!
+# sqltester
 
 ## Overview/General idea
 The basic idea of sql tester is to automate the writing of SQL queries to test tables 
@@ -7,13 +7,9 @@ Instead of writing the test queries manually, you write the test cases in a
 domain specific language and the python script will generate 
 the test queries for you.
 
-The generated queries have the following basic structure:
+For each test case you define in the domain specific language, the python script will generate a test query.
 
-Test case 1 -> table_prefix_table_1
-
-Test case 2 -> table_prefix_table_2
-
-Test case 3 -> table_prefix_table_3
+Additionally, the script will generate an aggregation query that unions all failed tests into a final table.
 
 Every test table will always have the following field:
 **error_description**: Empty string if no issue or description of issue
@@ -46,8 +42,6 @@ following content:
 no duplicates on account_id in tbl_customers;
 
 no duplicates on account_name in tbl_customers;
-
-account_name minimum length 5 in tbl_customers;
 ```
 Test cases always end with ";".
 
@@ -56,19 +50,17 @@ a test query to create the following tables
 (all tables will end with a nine digit random number, 
 so the numbers here are only examples):
 
-**tbl_test_no_duplicates_account_id_111111111**
+**tbl_test_111111111**
 
-**tbl_test_no_duplicates_account_name_222222222**
+**tbl_test_222222222**
 
-**tbl_test_minimum_length_account_name_333333333**
-
-**tbl_test_summary_444444444**
+**tbl_test_444444444**
 
 After running the generated test query, you only need to check the summary
 table e.g. like this:
 
 ```
-select * from tbl_test_summary_444444444 where error_description != "";
+select * from tbl_test_444444444 where error_description != "";
 ```
 
 The final summary table will only contain failed test cases.
