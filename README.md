@@ -27,7 +27,7 @@ For production, only the following files are required:
 * _query_generator.py
 * config.cfg
 
-### Simple Example
+### Simple Quickstart Example
 
 Before describing the different usage options, let's do a simple quickstart example. 
 
@@ -73,7 +73,7 @@ The command line parameters --input and --output are the only required command l
 
 This was only a quickstart description.
 
-You can find a complete documentation in the wiki.
+You can find a complete documentation of the available commands to describe test cases in the wiki.
 
 
 
