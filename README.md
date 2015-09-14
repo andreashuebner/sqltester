@@ -77,7 +77,7 @@ Alternatively by importing SqlTester from sqltester_driver:
  from sqltester_driver import SqlTester
  sqlTester = SqlTester('test_cases.csv', 'test_queries.sql') #first parameter input path, second parameter output path
  sqlTester.create_test_queries() # will do the same as calling sqltester_driver.py directly with command line parameters
- 
+ ```
 This was only a quickstart description.
 
 You can find a complete documentation of the available commands to describe test cases in the wiki.
