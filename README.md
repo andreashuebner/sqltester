@@ -22,7 +22,7 @@ The final table with all test cases ist just a union of the test results in the 
 You can just install sqltester with pip install sqltester, but you can also just clone the Git Repo.
 For production, only the following files are required:
 
-* sqltester.py
+* sqltester_driver.py
 * _config_parser.py
 * _query_generator.py
 * config.cfg
@@ -67,10 +67,17 @@ The final summary table will only contain failed test cases.
 
 You can generate your test queries by calling sqltester.py like this:
 
-python sqltester.py --input=test_cases.csv --output=test_queries.sql
+python sqltester_driver.py --input=test_cases.csv --output=test_queries.sql
 
 The command line parameters --input and --output are the only required command line parameters.
 
+Alternatively by importing SqlTester from sqltester_driver:
+
+ ```
+ from sqltester_driver import SqlTester
+ sqlTester = SqlTester('test_cases.csv', 'test_queries.sql') #first parameter input path, second parameter output path
+ sqlTester.create_test_queries() # will do the same as calling sqltester_driver.py directly with command line parameters
+ 
 This was only a quickstart description.
 
 You can find a complete documentation of the available commands to describe test cases in the wiki.
