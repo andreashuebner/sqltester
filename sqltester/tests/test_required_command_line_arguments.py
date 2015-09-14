@@ -2,8 +2,7 @@ import unittest
 import sys
 import os.path
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
-
-from sqltester import check_required_command_line_arguments_exist
+from sqltester_driver import check_required_command_line_arguments_exist
 
 class TestRequiredCommandLineParameters(unittest.TestCase):
   def setUp(self):

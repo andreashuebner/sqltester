@@ -5,6 +5,34 @@ from _query_generator import Evaluator
 # Some constants
 REQUIRED_COMMAND_LINE_ARGUMENTS = ['input', 'output']
 
+class SqlTester(object):
+  
+  def __init__(self, input, output):
+    ''' Constructor function for SqlTester.
+    
+    Args:
+      input: Path to input file with test cases
+      output: Path to output file to write the generated sql queries
+    
+    Throws:
+      MissingCommandLineArgumentsError in case input or output are missing or are empty strings
+   '''
+    
+    if input == '' or output == '':
+      raise MissingCommandLineArgumentsError('Creating SqlTester object requires path to input file '
+          + 'as first argument and path to output file as second argument')
+      
+    self._path_input_file = input
+    self._path_output_file = output
+    
+  def create_test_queries(self):
+    #read in content of input file
+    with open(self._path_input_file, 'r') as f:
+      content = f.read()
+      evaluator = Evaluator(content)
+      list_queries = evaluator.parse()
+      evaluator.write_queries(list_queries, self._path_output_file)    
+
 class MissingCommandLineArgumentsError(Exception):
   ''' Exception type for missing command line arguments '''
   pass
@@ -78,10 +106,6 @@ def command_line_parser(list_command_line_arguments):
     list_command_line_tuples.append(command_line_pair)
   
   return list_command_line_tuples
-  
-  
-  
-    
 
 def main():
   if len(sys.argv) < 3:
