@@ -1,0 +1,3 @@
+include sqltester/config.cfg
+include sqltester/tests/*.cfg
+include sqltester/tests/*.sql

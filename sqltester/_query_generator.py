@@ -1,9 +1,12 @@
 import re
 import collections
 import random
+import os.path
 
 from _config_parser import _return_configs
 from _config_parser import _return_single_config
+
+file_directory = os.path.dirname(os.path.realpath(__file__))
 
 ### Templates for aggregation ####
 TEMPlATE_AGGREGATION = """
@@ -85,7 +88,8 @@ def _generate_tokens(queries_to_parse):
 class Evaluator(object):
 
   def __init__(self, queries_to_parse, path_config_file = None):
-    self._PATH_CONFIG_FILE = path_config_file if path_config_file is not None else 'config.cfg'
+    self._PATH_CONFIG_FILE = path_config_file if path_config_file is not None else\
+      os.path.join(file_directory,'config.cfg')
     self._queries_to_parse = queries_to_parse
     self._config_tuples = list(_return_configs(self._PATH_CONFIG_FILE))
     self._generated_queries = '' # Will return all generated queries

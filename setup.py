@@ -1,9 +1,15 @@
 from distutils.core import setup
 
 setup(name='sqltester',
-      version='1.0',
+      description = "A python script to generate test queries for tests on data base tables using domain specific language",
+      version='1.1.9',
       author='Andras Huebner',
-      autho_email='andreas.huebnerh@gmail.com',
+      author_email='andreas.huebnerh@gmail.com',
       url='http://www.sqltester.com',
-      packages=['sqltester', 'sqltester.utils'],
+      package_dir={'sqltester': 'sqltester'},
+      packages=['sqltester', 'sqltester.utils', 'sqltester.tests'],
+      package_data = {
+        '': ['*.sql', '*.cfg'],
+        
+    }
   )
