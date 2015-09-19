@@ -7,6 +7,8 @@ def clean_query(query_to_clean):
     ''' Helper function to clean query template from line endings and consuctive whitespaces '''
     query_to_clean = query_to_clean.replace('\n',' ')
     query_to_clean = re.sub(r'\s+',' ', query_to_clean)
+    query_to_clean = query_to_clean.replace(' )', ')')
+    query_to_clean = query_to_clean.replace('( ', '(')
     query_to_clean = query_to_clean.strip()
     return query_to_clean
 class TestHelperFunctions(unittest.TestCase):
@@ -69,6 +71,32 @@ class TestNoDuplicateQueries(unittest.TestCase):
     )x
     ;
     """
+    
+  def test_missing_end_of_command_statement_one_command(self):
+    statement_to_test = 'No duplicates on account_id2 in tbl_customers2 a'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expect token ';' at end of statement in line 1") as ex:
+      evaluator.parse()
+      
+  def test_missing_end_of_command_statement_two_command(self):
+    statement_to_test = ('No duplicates on account_id2 in tbl_customers2;' +
+      'No duplicates on account_id2 in tbl_customers2 a')
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expect token ';' at end of statement in line 2") as ex:
+      evaluator.parse()
+  
+  def test_missing_in_token_one_command(self):
+    statement_to_test = 'No duplicates on account_id2 tbl_customers2 a'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting token 'in' after field names in line 1") as ex:
+      evaluator.parse()
+      
+  def test_missing_in_token_two_commands(self):
+    statement_to_test = ('No duplicates on account_id2 in tbl_customers2;' + 
+        'No duplicates on account_id2 tbl_customers2 a')
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting token 'in' after field names in line 2") as ex:
+      evaluator.parse()
   def test_unique_function_one_field_name(self):
     statement_to_test = 'No duplicates on account_id in tbl_customers;'
     evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
@@ -98,6 +126,45 @@ class TestMinimumDatasetsQueries(unittest.TestCase):
     )x
 ;
     """
+  def test_missing_token_number_after_at_least_one_command(self):
+    statement_to_test = 'at least in tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "After 'at least' token expecting number in line 1") as ex:
+      evaluator.parse()
+  
+  def test_missing_token_number_after_at_least_two_commands(self):
+    statement_to_test = 'at least 100 in tbl_customers;at least in tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "After 'at least' token expecting number in line 2") as ex:
+      evaluator.parse()
+      
+  def test_missing_token_in_after_number_datasets_one_command(self):
+    statement_to_test = 'at least 100 tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "After 'at least {number_datasets}' token, expecting 'in' token in "
+        "line 1") as ex:
+      evaluator.parse()
+      
+  def test_missing_token_in_after_number_datasets_two_commands(self):
+    statement_to_test = 'at least 100 tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "After 'at least {number_datasets}' token, expecting 'in' token in "
+        "line 1") as ex:
+      evaluator.parse()
+      
+  def test_missing_token_table_name_one_command(self):
+    statement_to_test = 'at least 100 in ;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "After 'in' token, expecting identifier as table name "
+        + "in line 1"):
+      evaluator.parse()
+      
+  def test_missing_token_table_name_two_commands(self):
+    statement_to_test = 'at least 100 in tbl_customers; at least 200 in ;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "After 'in' token, expecting identifier as table name "
+        + "in line 2"):
+      evaluator.parse()
   def test_minimum_datasets_without_condition(self):
     statement_to_test = 'at least 100 in tbl_customers; '
     evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
@@ -126,8 +193,6 @@ class TestMinimumDatasetsQueries(unittest.TestCase):
     first_created_query = list_created_queries[0]
     main_query = re.findall(r'select.+;', first_created_query, re.S)
     second_part = main_query[0]
-    print("second part")
-    print(second_part)
     self.assertEqual(second_part, expected_template, 'Should generate minimum datasets query correctly')
     
 class TestMinimumSumQueries(unittest.TestCase):
@@ -144,7 +209,63 @@ class TestMinimumSumQueries(unittest.TestCase):
     )x
     ;
     """
-    
+  def test_missing_token_field_after_sum_of_one_command(self):
+    statement_to_test = 'sum of sum of invoice_amount at least 1000 in tbl_customers;;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting identifier as field name after token 'sum of' "
+        + "in line 1"):
+      evaluator.parse()
+      
+  def test_missing_token_field_after_sum_of_two_commands(self):
+    statement_to_test = ('sum of invoice_amount at least 1000 in tbl_customers;' + 
+        'sum of sum of invoice_amount at least 1000 in tbl_customers;')
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting identifier as field name after token 'sum of' "
+        + "in line 2"):
+      evaluator.parse()
+      
+  def test_missing_token_at_least_one_command(self):
+    statement_to_test = 'sum of invoice_amount 1000 in tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting token 'at least' after field name in command" +
+        " 'sum of' in line 1"):
+      evaluator.parse()
+      
+  def test_missing_token_at_least_two_commands(self):
+    statement_to_test = ('sum of invoice_amount at least 1000 in tbl_customers;' + 
+        'sum of invoice_amount 1000 in tbl_customers;')
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting token 'at least' after field name in command" +
+        " 'sum of' in line 2"):
+      evaluator.parse() 
+      
+  def test_missing_number_after_token_at_least_one_command(self):
+    statement_to_test = 'sum of invoice_amount at least andreas in tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting number after token 'at least' in line 1"):
+      evaluator.parse()
+      
+  def test_missing_number_after_token_at_least_two_commands(self):
+    statement_to_test = ('sum of invoice_amount at least 1000 in tbl_customers;' + 
+        'sum of invoice_amount at least andreas in tbl_customers;')
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting number after token 'at least' in line 2"):
+      evaluator.parse() 
+      
+  def test_missing_token_in_after_at_least_number_one_command(self):
+    statement_to_test = 'sum of invoice_amount at least 100 tbl_customers;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting token 'in' after number in sum of command " + 
+        "in line 1"):
+      evaluator.parse()
+      
+  def test_missing_token_in_after_at_least_number_two_commands(self):
+    statement_to_test = ('sum of invoice_amount at least 1000 in tbl_customers;' + 
+        'sum of invoice_amount at least 100 tbl_customers;')
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting token 'in' after number in sum of command " + 
+        "in line 2"):
+      evaluator.parse()  
   def test_minimum_sum_without_condition(self):
     statement_to_test = 'sum of invoice_amount at least 1000 in tbl_customers;'
     evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
@@ -159,9 +280,23 @@ class TestMinimumSumQueries(unittest.TestCase):
     first_created_query = list_created_queries[0]
     main_query = re.findall(r'select.+;', first_created_query, re.S)
     second_part = main_query[0]
-    print("second part")
-    print(second_part)
-    self.assertEqual(second_part, expected_template, 'Should generate minimum sum query correctly')  
+    self.assertEqual(second_part, expected_template, 'Should generate minimum sum query correctly')
+    
+  def test_minimum_sum_with_condition(self):
+    statement_to_test = 'sum of invoice_amount at least 1000 in tbl_customers where invoice_amount > 100;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    list_created_queries = evaluator.parse()
+    #The only thing we do not test here is the create table statement because of random number
+    expected_template = self.TEMPlATE_MINIMUM_SUM_FOR_TEST
+    expected_template = expected_template.replace('{{conditions}}', 'where invoice_amount > 100')
+    expected_template = expected_template.replace('{{table_name}}', 'tbl_customers')
+    expected_template = expected_template.replace('{{minimum_sum}}', '1000')
+    expected_template = expected_template.replace('{{field_name}}', 'invoice_amount')
+    expected_template = clean_query(expected_template)
+    first_created_query = list_created_queries[0]
+    main_query = re.findall(r'select.+;', first_created_query, re.S)
+    second_part = main_query[0]
+    self.assertEqual(second_part, expected_template, 'Should generate minimum sum query correctly with condition')
 
 class TestAggregationQuery(unittest.TestCase):
   def setUp(self):
