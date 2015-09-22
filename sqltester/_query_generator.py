@@ -5,6 +5,7 @@ import os.path
 
 from _config_parser import _return_configs
 from _config_parser import _return_single_config
+from _config_parser import ConfigError
 
 file_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -96,11 +97,18 @@ class Evaluator(object):
     self._list_config_values = _return_configs(self._PATH_CONFIG_FILE)
     self._current_line = 0
     
-    # get single config values
+    # get single required config values
     self._create_table_statement = _return_single_config(self._list_config_values, 'create_table_statement')
     self._table_prefix = _return_single_config(self._list_config_values, 'table_prefix')
     self._inner_join_statement = _return_single_config(self._list_config_values, 'inner_join_statement')
     self._left_join_statement = _return_single_config(self._list_config_values, 'left_join_statement')
+      
+     # check of optional config values
+    self._commands_to_run_after = None
+    try:
+      self._commands_to_run_after = _return_single_config(self._list_config_values, 'commands_after_each_query')
+    except ConfigError:
+      pass
   
     #list of all created tables, later used to create union statement for final table
     self._created_tables = []
@@ -206,6 +214,24 @@ class Evaluator(object):
   
     return return_template
   
+  def _add_commands_after(self, query, commands_to_add, table_name):
+    ''' Member function to add commands to a generated query.
+    
+    In commands to add, the template variable {{table_name}} can be used and needs to be 
+    substituted with the generated table name with random suffix.
+    
+    Args:
+      query: The generated query
+      commands_to_add: The commmands to add, can include template variable {{table_name}}
+      table_name: The generated random table name (we need to substitute it)
+      
+    Returns:
+      The query with commands appended
+    '''
+      
+    commands_to_add = commands_to_add.replace('{{table_name}}', table_name)
+    query = query + ' ' + commands_to_add
+    return query
   def write_queries(self, list_queries_to_write, output_path):
     ''' Member function to write test queries into file
   
@@ -233,6 +259,11 @@ class Evaluator(object):
         self._table_name_to_create = (self._table_prefix + '_' + 
           str(self._create_random_number(1, 999999999)))
         self._created_query = self._expr()
+        # Check if member self._commands_to_run_after is not None, in this case we need to 
+        # append the commands to run and to substitute {{table_name}}
+        if self._commands_to_run_after is not None:
+          self._created_query = self._add_commands_after(self._created_query, self._commands_to_run_after, 
+              self._table_name_to_create)
         self._created_query = self._created_query.replace('\n',' ')
         self._created_query = re.sub(r'\s+',' ', self._created_query)
         self._created_query = self._created_query.replace(' )', ')')
