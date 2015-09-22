@@ -5,6 +5,7 @@ import os.path
 
 from _config_parser import _return_configs
 from _config_parser import _return_single_config
+from _config_parser import ConfigError
 
 file_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -63,7 +64,6 @@ FROM {{table_name}}
 """
 ### End of templates
 
-
 def _generate_tokens(queries_to_parse):
   
   NO_DUPLICATES = r'(?P<NO_DUPLICATES>(?i)no duplicates)'
@@ -73,7 +73,8 @@ def _generate_tokens(queries_to_parse):
   SUM_OF = r'(?P<SUM_OF>(?i)sum of(?:\n|\r|\t|\s))'
   WHERE_CONDITION = r'(?P<WHERE_CONDITION>(?i)where((?:.|\n|\t|\r|\s)+?);)'
   IDENTIFIER = r'(?P<IDENTIFIER>(?i)[a-z0-9_-]+)'
-  WHITESPACE = r'(?P<WHITESPACE>(?i)(?:\n|\r|\s))'
+  WHITESPACE = r'(?P<WHITESPACE>(?i)(?:\s))'
+  LINE_BREAK = r'(?P<LINE_BREAK>(?i)(?:\n|\r))'    
   COMMA = r'(?P<COMMA>(?i),)'
   END_STATEMENT = r'(?P<END_STATEMENT>(?i);)'
   patterns = re.compile('|'.join([NO_DUPLICATES, ON, IN, AT_LEAST, SUM_OF,
@@ -82,7 +83,7 @@ def _generate_tokens(queries_to_parse):
   scanner = patterns.scanner(queries_to_parse)
   for m in iter(scanner.match, None):
     tok = Token(m.lastgroup, m.group())
-    if tok.type != 'WHITESPACE':
+    if tok.type != 'WHITESPACE' and tok.type != 'LINE_BREAK':
       yield tok
 
 class Evaluator(object):
@@ -94,12 +95,20 @@ class Evaluator(object):
     self._config_tuples = list(_return_configs(self._PATH_CONFIG_FILE))
     self._generated_queries = '' # Will return all generated queries
     self._list_config_values = _return_configs(self._PATH_CONFIG_FILE)
+    self._current_line = 0
     
-    # get single config values
+    # get single required config values
     self._create_table_statement = _return_single_config(self._list_config_values, 'create_table_statement')
     self._table_prefix = _return_single_config(self._list_config_values, 'table_prefix')
     self._inner_join_statement = _return_single_config(self._list_config_values, 'inner_join_statement')
     self._left_join_statement = _return_single_config(self._list_config_values, 'left_join_statement')
+      
+     # check of optional config values
+    self._commands_to_run_after = None
+    try:
+      self._commands_to_run_after = _return_single_config(self._list_config_values, 'commands_after_each_query')
+    except ConfigError:
+      pass
   
     #list of all created tables, later used to create union statement for final table
     self._created_tables = []
@@ -205,6 +214,24 @@ class Evaluator(object):
   
     return return_template
   
+  def _add_commands_after(self, query, commands_to_add, table_name):
+    ''' Member function to add commands to a generated query.
+    
+    In commands to add, the template variable {{table_name}} can be used and needs to be 
+    substituted with the generated table name with random suffix.
+    
+    Args:
+      query: The generated query
+      commands_to_add: The commmands to add, can include template variable {{table_name}}
+      table_name: The generated random table name (we need to substitute it)
+      
+    Returns:
+      The query with commands appended
+    '''
+      
+    commands_to_add = commands_to_add.replace('{{table_name}}', table_name)
+    query = query + ' ' + commands_to_add
+    return query
   def write_queries(self, list_queries_to_write, output_path):
     ''' Member function to write test queries into file
   
@@ -224,6 +251,7 @@ class Evaluator(object):
     list_test_queries = [] #list of all generated test queries
     for query in queries:
       if len(query) >= 5: 
+        self._current_line = self._current_line + 1
         self.tokens = _generate_tokens(query + ';')
         self.tok = None
         self.nexttok = None
@@ -231,8 +259,15 @@ class Evaluator(object):
         self._table_name_to_create = (self._table_prefix + '_' + 
           str(self._create_random_number(1, 999999999)))
         self._created_query = self._expr()
+        # Check if member self._commands_to_run_after is not None, in this case we need to 
+        # append the commands to run and to substitute {{table_name}}
+        if self._commands_to_run_after is not None:
+          self._created_query = self._add_commands_after(self._created_query, self._commands_to_run_after, 
+              self._table_name_to_create)
         self._created_query = self._created_query.replace('\n',' ')
         self._created_query = re.sub(r'\s+',' ', self._created_query)
+        self._created_query = self._created_query.replace(' )', ')')
+        self._created_query = self._created_query.replace('( ', '(')
         self._created_query = self._created_query.strip()
         list_test_queries.append(self._created_query)
         self._created_tables.append(self._table_name_to_create)
@@ -299,11 +334,11 @@ class Evaluator(object):
           if self._accept('END_STATEMENT'):
             return self._template_to_use
           else:
-            raise SyntaxError("Expect token ';' at end of statement")
+            raise SyntaxError("Expect token ';' at end of statement in line " + str(self._current_line))
     
     
       else:
-        raise SyntaxError("Expecting token 'in' after field names")
+        raise SyntaxError("Expecting token 'in' after field names in line " + str(self._current_line))
     ### END PARSING NO DUPLICATES STATEMENT ###
     
     ### START PARSING AT LEAST STATEMENT ####
@@ -316,18 +351,20 @@ class Evaluator(object):
       if self._accept('IDENTIFIER'):
         is_number = self._is_number(self.tok.value)
         if is_number == False:
-          raise SyntaxError("After 'at least' token expecting number")
+          raise SyntaxError("After 'at least' token expecting number in line " + str(self._current_line))
         
         self._template_to_use = self._replace_template_variable(self._template_to_use,
           'minimum_datasets', str(self.tok.value))
         
         # Next token expected is IN
         if not self._accept('IN'):
-          raise SyntaxError("After 'at least {number_datasets}' token, expecting 'in' token")
+          raise SyntaxError("After 'at least {number_datasets}' token, expecting 'in' token in line "
+              + str(self._current_line))
         
         # Next token expected identifier (table name)
         if not self._accept('IDENTIFIER'):
-          raise SyntaxError("After 'in' token, expecting identifier as table name")
+          raise SyntaxError("After 'in' token, expecting identifier as table name in line "
+          + str(self._current_line))
     
         #current token value is table name
         self._template_to_use = self._replace_template_variable(self._template_to_use,
@@ -361,30 +398,32 @@ class Evaluator(object):
         self._template_to_use = self._replace_template_variable(self._template_to_use, 
                                  'field_name', self.tok.value)
       else:
-        raise SyntaxError("Expecting identifier as field name after token 'sum of'")
+        raise SyntaxError("Expecting identifier as field name after token 'sum of' in line " + 
+            str(self._current_line))
       
       # Next token determines what needs to be tested, currently supported at least
       if self._accept('AT_LEAST'):
         pass
       else:
-        raise SyntaxError("Expecting token 'at least' after field name in test 'sum of'")
+        raise SyntaxError("Expecting token 'at least' after field name in command 'sum of' in line " + 
+            str(self._current_line))
       
       # Next token identifier and needs to be a number
       if self._accept('IDENTIFIER'):
         is_number = self._is_number(self.tok.value)
         if is_number == False:
-          raise SyntaxError("Expecting number after token 'at least'")
+          raise SyntaxError("Expecting number after token 'at least' in line " + str(self._current_line))
         else:
           self._template_to_use = self._replace_template_variable(self._template_to_use,
             'minimum_sum', self.tok.value)
       else:
-        raise SyntaxError("Expecting number after token 'at least'")
+        raise SyntaxError("Expecting number after token 'at least' in line " + str(self._current_line))
       
       # Next token must be in
       if self._accept('IN'):
         pass
       else:
-        raise SyntaxError("Expecting token 'in' after number in sum of command")
+        raise SyntaxError("Expecting token 'in' after number in sum of command in line " + str(self._current_line))
       
       #Last required token is identifier (table name) and optionally after where condition(s)
       if self._accept('IDENTIFIER'):
