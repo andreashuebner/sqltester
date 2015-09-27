@@ -48,6 +48,20 @@ FROM {{table_name}}
 )x
 ;
 """
+    
+TEMPLATE_MAXIMUM_DATASETS = """
+  {{create_table_statement}} {{table_name_to_create}} as
+  select
+    case when number_datasets > {{maximum_datasets}} then "Expected max. 
+    {{maximum_datasets}} datasets with {{conditions}} in table {{table_name}}" else "" end as error_description
+    from
+    (
+     SELECT COUNT(*) as number_datasets
+     from {{table_name}}
+     {{conditions}}
+    )x
+   ;
+"""
 
 TEMPlATE_MINIMUM_SUM = """
 {{create_table_statement}} {{table_name_to_create}} as
@@ -71,13 +85,14 @@ def _generate_tokens(queries_to_parse):
   IN = r'(?P<IN>(?i)(?:\n|\r|\t|\s)in(?:\n|\r|\t|\s))'
   AT_LEAST = r'(?P<AT_LEAST>(?i)at least(?:\n|\r|\t|\s))'
   SUM_OF = r'(?P<SUM_OF>(?i)sum of(?:\n|\r|\t|\s))'
+  MAX = r'(?P<MAX>(?i)max(?:\n|\r|\t|\s))'    
   WHERE_CONDITION = r'(?P<WHERE_CONDITION>(?i)where((?:.|\n|\t|\r|\s)+?);)'
   IDENTIFIER = r'(?P<IDENTIFIER>(?i)[a-z0-9_-]+)'
   WHITESPACE = r'(?P<WHITESPACE>(?i)(?:\s))'
   LINE_BREAK = r'(?P<LINE_BREAK>(?i)(?:\n|\r))'    
   COMMA = r'(?P<COMMA>(?i),)'
   END_STATEMENT = r'(?P<END_STATEMENT>(?i);)'
-  patterns = re.compile('|'.join([NO_DUPLICATES, ON, IN, AT_LEAST, SUM_OF,
+  patterns = re.compile('|'.join([NO_DUPLICATES, MAX, ON, IN, AT_LEAST, SUM_OF,
     WHERE_CONDITION, END_STATEMENT, WHITESPACE, IDENTIFIER, COMMA]))
   Token = collections.namedtuple('Token', ['type', 'value'])
   scanner = patterns.scanner(queries_to_parse)
@@ -445,10 +460,31 @@ class Evaluator(object):
           return self._template_to_use
       else:
           raise SyntaxError("Expect token ';' at end of statement")
+     ### End PARSING MINIMUM SUM STATEMENT ### 
+    elif exprtype == "MAX":
+      self._template_to_use = TEMPLATE_MAXIMUM_DATASETS
+      self._template_to_use = self._replace_create_table_statement(self._template_to_use, 
+        self._create_table_statement, self._table_name_to_create) 
+      # Next token must be identifier and this number must be either int or double
+      if self._accept('IDENTIFIER'):
+        is_number = self._is_number(self.tok.value)
+        if is_number == False:
+          raise SyntaxError("After 'max' token expecting number in line " + str(self._current_line))
+      
+      self._template_to_use = self._replace_template_variable(self._template_to_use,
+          'maximum_datasets', str(self.tok.value))
+      
+      # Next token must be in
+      if self._accept('IN'):
+        pass
+      else:
+        raise SyntaxError("Expecting token 'in' after number in max command in line " + str(self._current_line))
     else:
       raise SnytaxError("Unknown command")
     
-        
+   ### End PARSING MINIMUM SUM STATEMENT ### 
+      
+     
   
       
   
@@ -478,7 +514,8 @@ class Evaluator(object):
         and token_type
     
     '''
-    if self._accept('NO_DUPLICATES') or self._accept('AT_LEAST') or self._accept('SUM_OF'):
+    if self._accept('NO_DUPLICATES') or self._accept('AT_LEAST') or self._accept('SUM_OF')\
+        or self._accept('MAX'):
       command_type = self.tok.type;
       command_val = self.tok.value
       return command_val, command_type

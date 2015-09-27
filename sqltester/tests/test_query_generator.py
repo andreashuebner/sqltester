@@ -1,6 +1,6 @@
 import unittest
 import re
-
+from unittest import skip
 from _query_generator import Evaluator
 
 def clean_query(query_to_clean):
@@ -157,7 +157,49 @@ class TestRandomNumberFunction(unittest.TestCase):
     second_part = main_query[0]
     second_part = clean_query(second_part)
     self.assertEqual(second_part, expected_template, 'Should generate no duplicate query correctly')
+
+class TestMaximumDatasetsQueries(unittest.TestCase):
+  def setup(self):
+    self.TEMPLATE_MAXIMUM_DATASETS_FOR_TEST = """
+    select
+    case when number_datasets > {{maximum_datasets}} then "Expected max. 
+    {{maximum_datasets}} datasets with {{conditions}} in table {{table_name}}" else "" end as error_description
+    from
+    (
+     SELECT COUNT(*) as number_datasets
+     from {{table_name}}
+     {{conditions}}
+    )x
+   ;
+  """
     
+  def test_missing_token_number_after_max_command(self):
+    statement_to_test = 'max in tbl_customers'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "After 'max' token expecting number in line 1") as ex:
+      evaluator.parse()
+      
+  def test_missing_in_token_after_number(self):
+    statement_to_test = 'max 100 tbl_customers'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting token 'in' after number in max command in line 1") as ex:
+      evaluator.parse()  
+  @skip("temporarily disabling, first testing errors")  
+  def test_maximum_datasets_with_condition(self):
+    statement_to_test = 'max 100 in tbl_customers where invoice_amount >= 100 and invoice_age < 30; '
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    list_created_queries = evaluator.parse()
+    #The only thing we do not test here is the create table statement because of random number
+    expected_template = self.TEMPLATE_MAXIMUM_DATASETS_FOR_TEST
+    expected_template = expected_template.replace('{{conditions}}', 'where invoice_amount >= 100 and invoice_age < 30')
+    expected_template = expected_template.replace('{{table_name}}', 'tbl_customers')
+    expected_template = expected_template.replace('{{maximum_datasets}}', '100')
+    expected_template = clean_query(expected_template)
+    first_created_query = list_created_queries[0]
+    main_query = re.findall(r'select.+;', first_created_query, re.S)
+    second_part = main_query[0]
+    second_part = clean_query(second_part)
+    self.assertEqual(second_part, expected_template, 'Should generate maximum datasets query correctly')  
 class TestMinimumDatasetsQueries(unittest.TestCase):
   
   def setUp(self):
@@ -173,6 +215,7 @@ class TestMinimumDatasetsQueries(unittest.TestCase):
     )x
 ;
     """
+    
   def test_missing_token_number_after_at_least_one_command(self):
     statement_to_test = 'at least in tbl_customers;'
     evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
