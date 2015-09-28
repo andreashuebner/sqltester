@@ -460,7 +460,9 @@ class Evaluator(object):
           return self._template_to_use
       else:
           raise SyntaxError("Expect token ';' at end of statement")
-     ### End PARSING MINIMUM SUM STATEMENT ### 
+     ### End PARSING MINIMUM SUM STATEMENT ###
+      
+     ### START PARSING MAX SUM STATEMENT ###
     elif exprtype == "MAX":
       self._template_to_use = TEMPLATE_MAXIMUM_DATASETS
       self._template_to_use = self._replace_create_table_statement(self._template_to_use, 
@@ -479,10 +481,31 @@ class Evaluator(object):
         pass
       else:
         raise SyntaxError("Expecting token 'in' after number in max command in line " + str(self._current_line))
+      
+      #Last required token is identifier (table name) and optionally after where condition(s)
+      if self._accept('IDENTIFIER'):
+        self._template_to_use = self._replace_template_variable(self._template_to_use,
+          'table_name', self.tok.value)
+      else:
+        raise SyntaxError("Expecting identifier after token 'in' in line " + str(self._current_line))
+      
+      #check for optional where conditions
+      if self._accept('END_STATEMENT'):
+          # remove placeholder conditions
+          self._template_to_use = self._replace_template_variable(self._template_to_use,
+          'conditions', '')
+          return self._template_to_use
+      elif self._accept('WHERE_CONDITION'):
+          condition = self.tok.value.replace(';','') # we match ; as well, remove
+          self._template_to_use = self._replace_template_variable(self._template_to_use,
+            'conditions', condition)
+          return self._template_to_use
+      else:
+          raise SyntaxError("Expect token ';' at end of statement")
     else:
       raise SnytaxError("Unknown command")
     
-   ### End PARSING MINIMUM SUM STATEMENT ### 
+   ### End PARSING MAX SUM STATEMENT ### 
       
      
   

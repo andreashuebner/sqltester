@@ -159,7 +159,7 @@ class TestRandomNumberFunction(unittest.TestCase):
     self.assertEqual(second_part, expected_template, 'Should generate no duplicate query correctly')
 
 class TestMaximumDatasetsQueries(unittest.TestCase):
-  def setup(self):
+  def setUp(self):
     self.TEMPLATE_MAXIMUM_DATASETS_FOR_TEST = """
     select
     case when number_datasets > {{maximum_datasets}} then "Expected max. 
@@ -183,8 +183,14 @@ class TestMaximumDatasetsQueries(unittest.TestCase):
     statement_to_test = 'max 100 tbl_customers'
     evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
     with self.assertRaisesRegexp(SyntaxError, "Expecting token 'in' after number in max command in line 1") as ex:
-      evaluator.parse()  
-  @skip("temporarily disabling, first testing errors")  
+      evaluator.parse()
+      
+  def test_missing_table_name_after_token_in(self):
+    statement_to_test = 'max 100 in ;'
+    evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
+    with self.assertRaisesRegexp(SyntaxError, "Expecting identifier after token 'in' in line 1") as ex:
+      evaluator.parse()
+   
   def test_maximum_datasets_with_condition(self):
     statement_to_test = 'max 100 in tbl_customers where invoice_amount >= 100 and invoice_age < 30; '
     evaluator = Evaluator(statement_to_test, 'sqltester/tests/config_dummy.cfg')
